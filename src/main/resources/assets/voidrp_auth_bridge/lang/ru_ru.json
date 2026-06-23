@@ -1,0 +1,7 @@
+{
+  "modmenu.nameTranslation.voidrp_auth_bridge": "VoidRP Auth Bridge",
+  "voidrp_auth_bridge.status.ready": "VoidRP Auth Bridge инициализирован",
+  "voidrp_auth_bridge.status.pending": "Ожидание авторизации",
+  "voidrp_auth_bridge.status.authorized": "Авторизация через лаунчер завершена",
+  "voidrp_auth_bridge.status.denied": "Авторизация отклонена"
+}

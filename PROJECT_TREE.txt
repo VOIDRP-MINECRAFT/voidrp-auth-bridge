@@ -1,0 +1,26 @@
+voidrp-auth-bridge/
+├─ build.gradle
+├─ gradle.properties
+├─ settings.gradle
+├─ gradlew
+├─ gradlew.bat
+├─ gradle/wrapper/gradle-wrapper.properties
+├─ gradle/wrapper/gradlew-wrapper-missing.txt
+├─ docs/
+│  ├─ ARCHITECTURE.md
+│  └─ TODO.md
+├─ src/main/java/ru/voidrp/authbridge/
+│  ├─ VoidRpAuthBridge.java
+│  ├─ bootstrap/ModBootstrap.java
+│  ├─ client/ClientTicketDispatcher.java
+│  ├─ client/ClientTicketFileService.java
+│  ├─ common/dto/*.java
+│  ├─ common/json/*.java
+│  ├─ common/logging/AuthLogMarkers.java
+│  ├─ common/util/HttpJson.java
+│  ├─ config/AuthBridgeProperties.java
+│  ├─ integration/AuthRestrictionBridge.java
+│  └─ server/*.java
+└─ src/main/resources/
+   ├─ META-INF/neoforge.mods.toml
+   └─ assets/voidrp_auth_bridge/lang/*.json
