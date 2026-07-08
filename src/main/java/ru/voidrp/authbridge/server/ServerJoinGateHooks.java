@@ -1,5 +1,7 @@
 package ru.voidrp.authbridge.server;
 
+import ru.voidrp.authbridge.compat.Compat;
+
 import java.time.Instant;
 import java.util.Iterator;
 import java.util.Map;
@@ -60,7 +62,7 @@ public final class ServerJoinGateHooks {
         }
 
         UUID playerUuid = player.getUUID();
-        String playerName = player.getGameProfile().getName();
+        String playerName = Compat.profileName(player.getGameProfile());
         var stateStore = ModBootstrap.get().stateStore();
 
         var reconnectGrant = stateStore.findActiveReconnectGrant(
@@ -131,7 +133,7 @@ public final class ServerJoinGateHooks {
                     continue;
                 }
 
-                String playerName = player.getGameProfile().getName();
+                String playerName = Compat.profileName(player.getGameProfile());
 
                 // Force-timeout if backend took longer than configured timeout
                 Instant startTime = pendingAccessCheckStartTimes.get(playerUuid);
@@ -261,7 +263,7 @@ public final class ServerJoinGateHooks {
 
                 VoidRpAuthBridge.LOGGER.info(
                         "Player moved to legacy pending: player={} uuid={}",
-                        player.getGameProfile().getName(),
+                        Compat.profileName(player.getGameProfile()),
                         playerUuid
                 );
                 continue;
@@ -270,14 +272,14 @@ public final class ServerJoinGateHooks {
             if (record.mustUseLauncher()) {
                 VoidRpAuthBridge.LOGGER.warn(
                         "Kicking player because launcher auth did not arrive before deadline: player={} uuid={}",
-                        player.getGameProfile().getName(),
+                        Compat.profileName(player.getGameProfile()),
                         playerUuid
                 );
                 player.connection.disconnect(LAUNCHER_ONLY_KICK);
             } else {
                 VoidRpAuthBridge.LOGGER.warn(
                         "Kicking player because account access is denied after auth gate timeout: player={} uuid={}",
-                        player.getGameProfile().getName(),
+                        Compat.profileName(player.getGameProfile()),
                         playerUuid
                 );
                 player.connection.disconnect(ACCOUNT_DENIED_KICK);

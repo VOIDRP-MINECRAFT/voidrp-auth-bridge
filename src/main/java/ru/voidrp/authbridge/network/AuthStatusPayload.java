@@ -4,8 +4,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import ru.voidrp.authbridge.VoidRpAuthBridge;
+import ru.voidrp.authbridge.compat.Compat;
 
 public record AuthStatusPayload(
         String status,
@@ -13,7 +12,7 @@ public record AuthStatusPayload(
 ) implements CustomPacketPayload {
 
     public static final Type<AuthStatusPayload> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidRpAuthBridge.MODID, "auth_status"));
+            Compat.payloadType("auth_status");
 
     public static final StreamCodec<ByteBuf, AuthStatusPayload> STREAM_CODEC =
             StreamCodec.composite(

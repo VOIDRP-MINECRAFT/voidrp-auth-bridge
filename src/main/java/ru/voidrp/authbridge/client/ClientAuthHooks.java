@@ -1,11 +1,12 @@
 package ru.voidrp.authbridge.client;
 
+import ru.voidrp.authbridge.compat.Compat;
+
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
 import ru.voidrp.authbridge.VoidRpAuthBridge;
 import ru.voidrp.authbridge.bootstrap.ModBootstrap;
 import ru.voidrp.authbridge.common.dto.ConsumePlayTicketRequest;
@@ -61,7 +62,7 @@ public final class ClientAuthHooks {
             return;
         }
 
-        String playerName = minecraft.player.getGameProfile().getName();
+        String playerName = Compat.profileName(minecraft.player.getGameProfile());
 
         Optional<ConsumePlayTicketRequest> request
                 = ModBootstrap.get().clientTicketDispatcher().buildConsumeRequest(playerName);
@@ -79,7 +80,7 @@ public final class ClientAuthHooks {
 
         ConsumePlayTicketRequest value = request.get();
 
-        PacketDistributor.sendToServer(new ConsumePlayTicketPayload(
+        Compat.sendToServer(new ConsumePlayTicketPayload(
                 value.ticket(),
                 value.playerName(),
                 value.launcherProof() != null ? value.launcherProof() : ""

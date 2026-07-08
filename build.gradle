@@ -1,49 +1,56 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'net.neoforged.gradle.userdev' version '7.1.21'
+    id 'net.neoforged.moddev' version '2.0.141'
 }
 
-version = mod_version
+// ── Мультиверсионная сборка ─────────────────────────────────────────
+// По умолчанию собирается 1.21.1; для нового поколения: ./gradlew jar -PmcVer=26.2
+def mcVer = providers.gradleProperty('mcVer').getOrElse('1.21.1')
+def verProps = [
+        '1.21.1': [neo: '21.1.218',      mcRange: '[1.21.1,1.22)', neoRange: '[21.1.218,21.2)', java: 21, srcDir: 'v1211'],
+        '26.2'  : [neo: '26.2.0.8-beta', mcRange: '[26.2]',        neoRange: '[26.2,26.3)',     java: 25, srcDir: 'v262'],
+][mcVer]
+if (verProps == null) throw new GradleException("Unsupported mcVer '${mcVer}' (expected 1.21.1 or 26.2)")
+
+version = "${mod_version}+mc${mcVer}"
 group = mod_group_id
 
 base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(verProps.java)
 
 sourceSets.main.resources {
     srcDir('src/generated/resources')
 }
+// Версионно-зависимый код кладём в src/versions/<ver>/java (общий — в src/main/java)
+sourceSets.main.java.srcDir("src/versions/${verProps.srcDir}/java")
 
-repositories {
-}
+neoForge {
+    version = verProps.neo
 
-runs {
-    configureEach {
-        systemProperty 'forge.logging.markers', 'REGISTRIES'
-        systemProperty 'forge.logging.console.level', 'debug'
-        modSource project.sourceSets.main
+    runs {
+        client {
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+        server {
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
     }
 
-    client {
-        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-    }
-
-    server {
-        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        argument '--nogui'
-    }
-
-    gameTestServer {
-        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-    }
-
-    data {
-        arguments.addAll '--mod', project.mod_id, '--all',
-                '--output', file('src/generated/resources/').getAbsolutePath(),
-                '--existing', file('src/main/resources/').getAbsolutePath()
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
     }
 }
 
@@ -51,16 +58,12 @@ configurations {
     runtimeClasspath.extendsFrom localRuntime
 }
 
-dependencies {
-    implementation "net.neoforged:neoforge:${neo_version}"
-}
-
 tasks.withType(ProcessResources).configureEach {
     def replaceProperties = [
-            minecraft_version      : minecraft_version,
-            minecraft_version_range: minecraft_version_range,
-            neo_version            : neo_version,
-            neo_version_range      : neo_version_range,
+            minecraft_version      : mcVer,
+            minecraft_version_range: verProps.mcRange,
+            neo_version            : verProps.neo,
+            neo_version_range      : verProps.neoRange,
             loader_version_range   : loader_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,

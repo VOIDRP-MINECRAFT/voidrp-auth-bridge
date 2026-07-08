@@ -4,8 +4,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import ru.voidrp.authbridge.VoidRpAuthBridge;
+import ru.voidrp.authbridge.compat.Compat;
 
 public record ConsumePlayTicketPayload(
         String ticket,
@@ -14,7 +13,7 @@ public record ConsumePlayTicketPayload(
 ) implements CustomPacketPayload {
 
     public static final Type<ConsumePlayTicketPayload> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidRpAuthBridge.MODID, "consume_play_ticket"));
+            Compat.payloadType("consume_play_ticket");
 
     public static final StreamCodec<ByteBuf, ConsumePlayTicketPayload> STREAM_CODEC =
             StreamCodec.composite(

@@ -1,5 +1,7 @@
 package ru.voidrp.authbridge.network;
 
+import ru.voidrp.authbridge.compat.Compat;
+
 import java.util.UUID;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -23,9 +25,9 @@ public final class ServerPayloadHandler {
         }
 
         // Always use the server-verified game profile name, never trust the client-supplied name.
-        String verifiedPlayerName = serverPlayer.getGameProfile().getName();
+        String verifiedPlayerName = Compat.profileName(serverPlayer.getGameProfile());
         UUID playerUuid = serverPlayer.getUUID();
-        MinecraftServer server = serverPlayer.getServer();
+        MinecraftServer server = serverPlayer.level().getServer();
 
         VoidRpAuthBridge.LOGGER.info(
                 "Received launcher ticket payload: player={} uuid={} requestedPlayerName={}",

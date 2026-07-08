@@ -1,5 +1,7 @@
 package ru.voidrp.authbridge.server;
 
+import ru.voidrp.authbridge.compat.Compat;
+
 import com.mojang.brigadier.ParseResults;
 import java.util.Set;
 import net.minecraft.commands.CommandSourceStack;
@@ -244,9 +246,9 @@ public final class PreAuthRestrictionService {
 
         if (player.tickCount % 40 == 0) {
             if (ModBootstrap.get().stateStore().isLegacyPending(player.getUUID())) {
-                player.displayClientMessage(LEGACY_HINT, true);
+                Compat.sendOverlay(player, LEGACY_HINT);
             } else {
-                player.displayClientMessage(LAUNCHER_HINT, true);
+                Compat.sendOverlay(player, LAUNCHER_HINT);
             }
         }
     }

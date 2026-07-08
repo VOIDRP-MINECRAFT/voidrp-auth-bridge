@@ -1,5 +1,7 @@
 package ru.voidrp.authbridge.server;
 
+import ru.voidrp.authbridge.compat.Compat;
+
 import com.mojang.brigadier.arguments.StringArgumentType;
 import java.util.Map;
 import java.util.UUID;
@@ -44,8 +46,8 @@ public final class AuthCommandBridge {
                                     }
                                     lastLoginAttempt.put(playerUuid, now);
 
-                                    String playerName = player.getGameProfile().getName();
-                                    MinecraftServer server = player.getServer();
+                                    String playerName = Compat.profileName(player.getGameProfile());
+                                    MinecraftServer server = player.level().getServer();
 
                                     // Fire-and-forget async HTTP — never blocks the server tick.
                                     ModBootstrap.get().legacyAuthService().loginAsync(playerUuid, playerName, password)
