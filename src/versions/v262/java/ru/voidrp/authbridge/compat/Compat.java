@@ -5,7 +5,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import ru.voidrp.authbridge.VoidRpAuthBridge;
 
 /**
@@ -28,8 +27,4 @@ public final class Compat {
         player.sendOverlayMessage(message);
     }
 
-    /** Отправка пейлоада с клиента на сервер. */
-    public static void sendToServer(CustomPacketPayload payload) {
-        ClientPacketDistributor.sendToServer(payload);
-    }
 }

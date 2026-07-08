@@ -1,5 +1,6 @@
 package ru.voidrp.authbridge.client;
 
+import ru.voidrp.authbridge.compat.ClientCompat;
 import ru.voidrp.authbridge.compat.Compat;
 
 import java.util.Optional;
@@ -80,7 +81,7 @@ public final class ClientAuthHooks {
 
         ConsumePlayTicketRequest value = request.get();
 
-        Compat.sendToServer(new ConsumePlayTicketPayload(
+        ClientCompat.sendToServer(new ConsumePlayTicketPayload(
                 value.ticket(),
                 value.playerName(),
                 value.launcherProof() != null ? value.launcherProof() : ""
