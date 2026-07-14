@@ -79,6 +79,20 @@ public final class ServerPayloadHandler {
                     response.userId()
             );
         } else {
+            // If the player is already authenticated (e.g. restored from a reconnect grant on
+            // this join), a stale launcher ticket that the client auto-resent is irrelevant.
+            // Don't show the misleading "ticket failed, restart the launcher" message — they are
+            // already in and playing.
+            var existingSession = ModBootstrap.get().stateStore().find(player.getUUID());
+            if (existingSession.isPresent()) {
+                VoidRpAuthBridge.LOGGER.info(
+                        "Ignoring stale launcher-ticket rejection for already-authenticated player={} uuid={} source={}",
+                        verifiedPlayerName, player.getUUID(), existingSession.get().source());
+                PacketDistributor.sendToPlayer(player, AuthStatusPayload.accepted(
+                        "Сессия восстановлена — можно продолжать игру."));
+                return;
+            }
+
             String reason = response != null && response.error() != null
                     ? response.error()
                     : "launcher ticket rejected";
