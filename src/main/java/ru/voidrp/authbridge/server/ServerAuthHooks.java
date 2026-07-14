@@ -1,10 +1,12 @@
 package ru.voidrp.authbridge.server;
 
 import java.time.Instant;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import ru.voidrp.authbridge.VoidRpAuthBridge;
 import ru.voidrp.authbridge.bootstrap.ModBootstrap;
+import ru.voidrp.authbridge.compat.Compat;
 import ru.voidrp.authbridge.server.AuthCommandBridge;
 
 public final class ServerAuthHooks {
@@ -50,13 +52,15 @@ public final class ServerAuthHooks {
                     || record.source() == AuthSource.RECONNECT_GRANT;
             if (isChainableSource) {
                 Instant expiresAtUtc = Instant.now().plusSeconds(RECONNECT_GRANT_SECONDS);
-                stateStore.rememberReconnectGrant(record, expiresAtUtc);
+                String ip = player instanceof ServerPlayer sp ? Compat.remoteIp(sp) : null;
+                stateStore.rememberReconnectGrant(record, expiresAtUtc, ip);
 
                 VoidRpAuthBridge.LOGGER.info(
-                        "Saved reconnect grant for player={} uuid={} source={} until={}",
+                        "Saved reconnect grant for player={} uuid={} source={} ip={} until={}",
                         record.playerName(),
                         record.playerUuid(),
                         record.source(),
+                        ip,
                         expiresAtUtc
                 );
             } else {

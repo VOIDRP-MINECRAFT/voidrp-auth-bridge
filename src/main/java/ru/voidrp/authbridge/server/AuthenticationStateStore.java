@@ -75,7 +75,7 @@ public final class AuthenticationStateStore {
         return Map.copyOf(pendingRecords);
     }
 
-    public void rememberReconnectGrant(AuthenticatedPlayerRecord record, Instant expiresAtUtc) {
+    public void rememberReconnectGrant(AuthenticatedPlayerRecord record, Instant expiresAtUtc, String ip) {
         reconnectGrantRecords.put(
                 record.playerUuid(),
                 new ReconnectGrantRecord(
@@ -85,12 +85,13 @@ public final class AuthenticationStateStore {
                         record.source(),
                         record.legacyAuthEnabled(),
                         record.authenticatedAt(),
-                        expiresAtUtc
+                        expiresAtUtc,
+                        ip
                 )
         );
     }
 
-    public Optional<ReconnectGrantRecord> findActiveReconnectGrant(UUID playerUuid, String playerName, Instant nowUtc) {
+    public Optional<ReconnectGrantRecord> findActiveReconnectGrant(UUID playerUuid, String playerName, String ip, Instant nowUtc) {
         ReconnectGrantRecord grant = reconnectGrantRecords.get(playerUuid);
         if (grant == null) {
             return Optional.empty();
@@ -107,6 +108,14 @@ public final class AuthenticationStateStore {
         }
 
         if (!grant.playerName().equalsIgnoreCase(playerName)) {
+            return Optional.empty();
+        }
+
+        // Bind the grant to the IP it was issued from. A different IP (potential
+        // impersonation of a recently-active offline-UUID player) does not get the
+        // fast-path — it falls through to normal launcher/backend authentication.
+        // A null IP on either side (couldn't resolve) is treated as non-matching.
+        if (grant.ip() == null || ip == null || !grant.ip().equals(ip)) {
             return Optional.empty();
         }
 
@@ -138,7 +147,8 @@ public final class AuthenticationStateStore {
             AuthSource source,
             boolean legacyAuthEnabled,
             Instant grantedAtUtc,
-            Instant expiresAtUtc
+            Instant expiresAtUtc,
+            String ip
     ) {
         
 

@@ -52,6 +52,12 @@ public final class ServerJoinGateHooks {
     // Timestamps for timeout enforcement (using configured requestTimeout)
     private static final Map<UUID, Instant> pendingAccessCheckStartTimes = new ConcurrentHashMap<>();
 
+    // Reconnect-grant players are let in immediately, but their account access is
+    // revalidated against the backend so bans/disabled accounts are still enforced.
+    private static final Map<UUID, CompletableFuture<PlayerAccessResponse>> pendingGrantRevalidation =
+            new ConcurrentHashMap<>();
+    private static final Map<UUID, Instant> pendingGrantRevalStartTimes = new ConcurrentHashMap<>();
+
     private ServerJoinGateHooks() {
     }
 
@@ -63,11 +69,13 @@ public final class ServerJoinGateHooks {
 
         UUID playerUuid = player.getUUID();
         String playerName = Compat.profileName(player.getGameProfile());
+        String ip = Compat.remoteIp(player);
         var stateStore = ModBootstrap.get().stateStore();
 
         var reconnectGrant = stateStore.findActiveReconnectGrant(
                 playerUuid,
                 playerName,
+                ip,
                 Instant.now()
         );
 
@@ -93,11 +101,21 @@ public final class ServerJoinGateHooks {
             ));
 
             VoidRpAuthBridge.LOGGER.info(
-                    "Player restored from reconnect grant: player={} uuid={} expiresAtUtc={}",
+                    "Player restored from reconnect grant: player={} uuid={} ip={} expiresAtUtc={}",
                     playerName,
                     playerUuid,
+                    ip,
                     grant.expiresAtUtc()
             );
+
+            // The grant skips the launcher round-trip, but NOT the account-access check.
+            // Revalidate against the backend so a banned/disabled account can't keep
+            // rejoining via a still-valid grant. Only a definitive "denied" kicks;
+            // transient backend errors are lenient (player is already grant-authenticated).
+            CompletableFuture<PlayerAccessResponse> revalidation =
+                    ModBootstrap.get().backendAuthClient().getPlayerAccessAsync(playerName);
+            pendingGrantRevalidation.put(playerUuid, revalidation);
+            pendingGrantRevalStartTimes.put(playerUuid, Instant.now());
             return;
         }
 
@@ -117,6 +135,8 @@ public final class ServerJoinGateHooks {
     public static void onServerTick(ServerTickEvent.Post event) {
         var stateStore = ModBootstrap.get().stateStore();
         stateStore.evictExpiredReconnectGrants(Instant.now());
+
+        processGrantRevalidations(event, stateStore);
 
         // Process completed async access checks
         if (!pendingAccessChecks.isEmpty()) {
@@ -293,6 +313,80 @@ public final class ServerJoinGateHooks {
             }
 
             stateStore.clear(playerUuid);
+        }
+    }
+
+    /**
+     * Revalidates reconnect-grant players against the backend. The player is already in
+     * (grant), so this only enforces bans: a definitive "account not found" or "account
+     * disabled" kicks them and drops their grant. Transient backend errors / timeouts are
+     * lenient — a recently-authenticated player is not kicked over a flaky backend.
+     */
+    private static void processGrantRevalidations(ServerTickEvent.Post event,
+                                                  AuthenticationStateStore stateStore) {
+        if (pendingGrantRevalidation.isEmpty()) {
+            return;
+        }
+        long timeoutMs = ModBootstrap.get().properties().requestTimeout().toMillis();
+        Iterator<Map.Entry<UUID, CompletableFuture<PlayerAccessResponse>>> it =
+                pendingGrantRevalidation.entrySet().iterator();
+
+        while (it.hasNext()) {
+            Map.Entry<UUID, CompletableFuture<PlayerAccessResponse>> entry = it.next();
+            UUID playerUuid = entry.getKey();
+            CompletableFuture<PlayerAccessResponse> future = entry.getValue();
+
+            ServerPlayer player = event.getServer().getPlayerList().getPlayer(playerUuid);
+            if (player == null) {
+                future.cancel(false);
+                it.remove();
+                pendingGrantRevalStartTimes.remove(playerUuid);
+                continue;
+            }
+
+            Instant startTime = pendingGrantRevalStartTimes.get(playerUuid);
+            if (startTime != null
+                    && Instant.now().toEpochMilli() - startTime.toEpochMilli() > timeoutMs) {
+                // Lenient on timeout — keep the already-authenticated player.
+                future.cancel(false);
+                it.remove();
+                pendingGrantRevalStartTimes.remove(playerUuid);
+                continue;
+            }
+
+            if (!future.isDone()) {
+                continue;
+            }
+
+            it.remove();
+            pendingGrantRevalStartTimes.remove(playerUuid);
+
+            String playerName = Compat.profileName(player.getGameProfile());
+            PlayerAccessResponse access;
+            try {
+                access = future.get();
+            } catch (Exception ex) {
+                // Lenient on transient error.
+                continue;
+            }
+
+            if (isBackendLookupFailure(access)) {
+                continue; // lenient
+            }
+
+            if (!access.playerExists()) {
+                VoidRpAuthBridge.LOGGER.warn(
+                        "Kicking reconnect-grant player: account not found on revalidation player={} uuid={}",
+                        playerName, playerUuid);
+                stateStore.removeReconnectGrant(playerUuid);
+                disconnectAndClear(player, ACCOUNT_NOT_FOUND_KICK);
+            } else if (!access.userActive()) {
+                VoidRpAuthBridge.LOGGER.warn(
+                        "Kicking reconnect-grant player: account disabled/banned on revalidation player={} uuid={}",
+                        playerName, playerUuid);
+                stateStore.removeReconnectGrant(playerUuid);
+                disconnectAndClear(player, ACCOUNT_DENIED_KICK);
+            }
         }
     }
 

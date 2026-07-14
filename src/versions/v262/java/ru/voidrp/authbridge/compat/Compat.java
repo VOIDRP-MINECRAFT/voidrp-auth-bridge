@@ -22,6 +22,19 @@ public final class Compat {
         return profile.name();
     }
 
+    /** IP-адрес подключения игрока (без порта), либо null. */
+    public static String remoteIp(net.minecraft.server.level.ServerPlayer player) {
+        try {
+            java.net.SocketAddress addr = player.connection.getConnection().getRemoteAddress();
+            if (addr instanceof java.net.InetSocketAddress isa && isa.getAddress() != null) {
+                return isa.getAddress().getHostAddress();
+            }
+            return addr != null ? addr.toString() : null;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     /** Сообщение над хотбаром (actionbar). */
     public static void sendOverlay(Player player, Component message) {
         player.sendOverlayMessage(message);
