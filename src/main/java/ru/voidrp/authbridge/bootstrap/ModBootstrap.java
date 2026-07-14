@@ -97,6 +97,9 @@ public final class ModBootstrap {
 
         modBus.register(AuthPayloadRegistrar.class);
 
+        // VoidRP skin system (26.2 only; no-op on 1.21.1 via the compat adapter).
+        ru.voidrp.authbridge.compat.Compat.initSkins(modBus);
+
         NeoForge.EVENT_BUS.register(AuthCommandBridge.class);
         NeoForge.EVENT_BUS.register(ServerAuthHooks.class);
         NeoForge.EVENT_BUS.register(ServerJoinGateHooks.class);

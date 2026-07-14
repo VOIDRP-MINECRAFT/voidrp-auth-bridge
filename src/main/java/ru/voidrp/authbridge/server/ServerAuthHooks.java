@@ -9,7 +9,23 @@ import ru.voidrp.authbridge.server.AuthCommandBridge;
 
 public final class ServerAuthHooks {
 
-    private static final long RECONNECT_GRANT_SECONDS = 300L;
+    // Reconnect-grant lifetime. Default 30 min (was 5). Override with
+    // -Dvoidrp.auth.reconnectGrantMinutes=<n>. Lets players who get disconnected
+    // (e.g. by an HDD save-freeze timeout kick) rejoin without a full launcher re-auth.
+    private static final long RECONNECT_GRANT_SECONDS = resolveGrantSeconds();
+
+    private static long resolveGrantSeconds() {
+        long minutes = 30L;
+        try {
+            String prop = System.getProperty("voidrp.auth.reconnectGrantMinutes");
+            if (prop != null) {
+                minutes = Long.parseLong(prop.trim());
+            }
+        } catch (Throwable ignored) {
+            // keep default
+        }
+        return Math.max(1L, minutes) * 60L;
+    }
 
     private ServerAuthHooks() {
     }
@@ -24,11 +40,14 @@ public final class ServerAuthHooks {
         if (authenticated.isPresent()) {
             var record = authenticated.get();
 
-            // Give a reconnect grant to all players who authenticated via a real launcher ticket
-            // or via legacy login. A session that was itself restored from a reconnect grant does
-            // NOT produce a new grant — this prevents indefinite chaining for launcher-only accounts.
+            // Give a reconnect grant to players who authenticated via a launcher ticket, legacy
+            // login, OR a previous reconnect grant. Chaining RECONNECT_GRANT lets a player who is
+            // repeatedly disconnected (HDD save-freeze kicks) rejoin unlimited times without a full
+            // launcher re-auth. Note: vanilla bans and the anticheat still apply before this mod, so
+            // only the backend account-access re-check is deferred within the grant window.
             boolean isChainableSource = record.source() == AuthSource.LAUNCHER_TICKET
-                    || record.source() == AuthSource.LEGACY_LOGIN;
+                    || record.source() == AuthSource.LEGACY_LOGIN
+                    || record.source() == AuthSource.RECONNECT_GRANT;
             if (isChainableSource) {
                 Instant expiresAtUtc = Instant.now().plusSeconds(RECONNECT_GRANT_SECONDS);
                 stateStore.rememberReconnectGrant(record, expiresAtUtc);

@@ -19,6 +19,9 @@ import ru.voidrp.authbridge.common.util.HttpJson;
 import ru.voidrp.authbridge.config.AuthBridgeProperties;
 import ru.voidrp.authbridge.common.dto.PlayerAccessRequest;
 import ru.voidrp.authbridge.common.dto.PlayerAccessResponse;
+import ru.voidrp.authbridge.common.dto.PlayerSkinResponse;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 public final class BackendAuthClient {
     private final AuthBridgeProperties properties;
@@ -56,6 +59,32 @@ public final class BackendAuthClient {
                 .exceptionally(ex -> {
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
                     return PlayerAccessResponse.failed("io_error: " + cause.getMessage());
+                });
+    }
+
+    /**
+     * Fetches the player's VoidRP skin (public PNG url + model variant). Never
+     * blocks the server thread. On any failure returns a hasSkin=false result.
+     */
+    public CompletableFuture<PlayerSkinResponse> getPlayerSkinAsync(String playerName) {
+        String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
+        URI uri = properties.backendBaseUrl().resolve("/api/v1/server/auth/player-skin/" + encoded);
+        HttpRequest httpRequest = HttpRequest.newBuilder(uri)
+                .header("X-Game-Auth-Secret", properties.gameAuthSecret())
+                .timeout(properties.requestTimeout())
+                .GET()
+                .build();
+
+        return httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
+                .thenApply(response -> {
+                    if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                        return gson.fromJson(response.body(), PlayerSkinResponse.class);
+                    }
+                    return PlayerSkinResponse.failed("http_" + response.statusCode() + ": " + response.body());
+                })
+                .exceptionally(ex -> {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    return PlayerSkinResponse.failed("io_error: " + cause.getMessage());
                 });
     }
 

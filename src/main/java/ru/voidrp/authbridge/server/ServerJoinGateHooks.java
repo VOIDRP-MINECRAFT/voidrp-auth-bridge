@@ -84,6 +84,13 @@ public final class ServerJoinGateHooks {
             ));
 
             player.sendSystemMessage(RECONNECT_ACCEPTED);
+            // Tell the modded client to lift its pre-auth chat filter immediately.
+            // Without this the filter only clears via the slow client-side fallback
+            // (ticket round-trip or the 120s window), so reconnecting players saw a
+            // long delay before any chat — including the mod's own messages — appeared.
+            PacketDistributor.sendToPlayer(player, AuthStatusPayload.accepted(
+                    "Повторный вход подтверждён. Можно продолжать игру."
+            ));
 
             VoidRpAuthBridge.LOGGER.info(
                     "Player restored from reconnect grant: player={} uuid={} expiresAtUtc={}",

@@ -27,4 +27,17 @@ public final class Compat {
         player.sendOverlayMessage(message);
     }
 
+    /**
+     * Включает систему скинов VoidRP (только 26.2). Регистрирует payload и
+     * серверные хуки всегда; клиентский обработчик — только на физическом клиенте,
+     * чтобы client-only классы не грузились на dedicated-сервере.
+     */
+    public static void initSkins(net.neoforged.bus.api.IEventBus modBus) {
+        modBus.register(ru.voidrp.authbridge.skin.SkinPayloadRegistrar.class);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.register(ru.voidrp.authbridge.skin.ServerSkinHooks.class);
+        if (net.neoforged.fml.loading.FMLEnvironment.getDist() == net.neoforged.api.distmarker.Dist.CLIENT) {
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.register(ru.voidrp.authbridge.skin.ClientSkinService.class);
+        }
+    }
+
 }

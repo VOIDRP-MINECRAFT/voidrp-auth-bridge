@@ -27,4 +27,9 @@ public final class Compat {
         player.displayClientMessage(message, true);
     }
 
+    /** Система скинов VoidRP реализована только для 26.2 — на 1.21.1 no-op. */
+    public static void initSkins(net.neoforged.bus.api.IEventBus modBus) {
+        // no-op
+    }
+
 }
