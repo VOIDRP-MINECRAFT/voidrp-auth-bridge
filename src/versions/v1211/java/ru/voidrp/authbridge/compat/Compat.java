@@ -40,9 +40,19 @@ public final class Compat {
         player.displayClientMessage(message, true);
     }
 
-    /** Система скинов VoidRP реализована только для 26.2 — на 1.21.1 no-op. */
+    /**
+     * Включает систему скинов VoidRP (1.21.1). Регистрирует payload и серверные
+     * хуки всегда; клиентский обработчик — только на физическом клиенте, чтобы
+     * client-only классы не грузились на dedicated-сервере. Заменяет старый путь
+     * gamesync→SkinsRestorer (тот дёргал player-list refresh и ронял игроков
+     * из таб-листа на гибриде Mohist/Youer).
+     */
     public static void initSkins(net.neoforged.bus.api.IEventBus modBus) {
-        // no-op
+        modBus.register(ru.voidrp.authbridge.skin.SkinPayloadRegistrar.class);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.register(ru.voidrp.authbridge.skin.ServerSkinHooks.class);
+        if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.register(ru.voidrp.authbridge.skin.ClientSkinService.class);
+        }
     }
 
 }
