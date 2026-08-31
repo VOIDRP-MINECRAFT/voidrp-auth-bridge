@@ -1,11 +1,14 @@
 package ru.voidrp.authbridge.skin;
 
+import com.mojang.brigadier.arguments.StringArgumentType;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.commands.Commands;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import ru.voidrp.authbridge.VoidRpAuthBridge;
@@ -44,9 +47,45 @@ public final class ServerSkinHooks {
         if (server == null) {
             return;
         }
+        refreshAndBroadcast(server, playerName);
+    }
 
-        ModBootstrap.get().backendAuthClient().getPlayerSkinAsync(playerName)
-                .thenAccept(skin -> server.execute(() -> applyAndBroadcast(server, playerName, skin)));
+    /**
+     * Re-fetch a player's skin from the backend and broadcast it to everyone online — used
+     * for INSTANT skin changes (triggered from the WebGUI via a server command). The player
+     * name is resolved to its exact online-profile casing when possible.
+     */
+    public static void refreshAndBroadcast(MinecraftServer server, String playerName) {
+        if (server == null || playerName == null || playerName.isEmpty()) {
+            return;
+        }
+        String resolved = playerName;
+        for (ServerPlayer online : server.getPlayerList().getPlayers()) {
+            String n = Compat.profileName(online.getGameProfile());
+            if (n.equalsIgnoreCase(playerName)) {
+                resolved = n;
+                break;
+            }
+        }
+        final String name = resolved;
+        ModBootstrap.get().backendAuthClient().getPlayerSkinAsync(name)
+                .thenAccept(skin -> server.execute(() -> applyAndBroadcast(server, name, skin)));
+    }
+
+    /** Console/OP command: {@code /voidrpskin refresh <player>} → instant skin re-broadcast. */
+    @SubscribeEvent
+    public static void onRegisterCommands(RegisterCommandsEvent event) {
+        event.getDispatcher().register(
+                Commands.literal("voidrpskin")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("refresh")
+                                .then(Commands.argument("player", StringArgumentType.word())
+                                        .executes(ctx -> {
+                                            MinecraftServer server = ctx.getSource().getServer();
+                                            String name = StringArgumentType.getString(ctx, "player");
+                                            refreshAndBroadcast(server, name);
+                                            return 1;
+                                        }))));
     }
 
     @SubscribeEvent
