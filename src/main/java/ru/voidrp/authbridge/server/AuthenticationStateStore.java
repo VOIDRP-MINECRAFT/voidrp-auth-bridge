@@ -130,8 +130,16 @@ public final class AuthenticationStateStore {
         reconnectGrantRecords.entrySet().removeIf(e -> e.getValue().isExpired(nowUtc));
     }
 
+    /**
+     * A player waiting at the auth gate.
+     *
+     * <p>Holds the moment they entered rather than a precomputed deadline: the
+     * grace period is admin-editable at runtime, so the deadline has to be derived
+     * from the current setting on every check. Freezing it here would mean a change
+     * in the admin panel only affected players who joined afterwards.
+     */
     public record PendingPlayerRecord(
-            Instant deadlineUtc,
+            Instant enteredAtUtc,
             boolean legacyAuthEnabled,
             boolean mustUseLauncher,
             double anchorX,

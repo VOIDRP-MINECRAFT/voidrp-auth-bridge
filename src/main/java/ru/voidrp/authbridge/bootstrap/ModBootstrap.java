@@ -7,6 +7,7 @@ import ru.voidrp.authbridge.client.ClientAuthHooks;
 import ru.voidrp.authbridge.client.ClientChatFilter;
 import ru.voidrp.authbridge.client.ClientTicketDispatcher;
 import ru.voidrp.authbridge.config.AuthBridgeProperties;
+import ru.voidrp.authbridge.config.LiveAuthSettings;
 import ru.voidrp.authbridge.integration.AuthIntegrationRegistry;
 import ru.voidrp.authbridge.integration.AuthRestrictionBridge;
 import java.util.List;
@@ -28,6 +29,7 @@ public final class ModBootstrap {
     private static ModBootstrap INSTANCE;
 
     private final AuthBridgeProperties properties;
+    private final LiveAuthSettings liveAuthSettings;
     private final AuthenticationStateStore stateStore;
     private final BackendAuthClient backendAuthClient;
     private final PlayTicketConsumeService playTicketConsumeService;
@@ -38,6 +40,7 @@ public final class ModBootstrap {
 
     private ModBootstrap(
             AuthBridgeProperties properties,
+            LiveAuthSettings liveAuthSettings,
             AuthenticationStateStore stateStore,
             BackendAuthClient backendAuthClient,
             PlayTicketConsumeService playTicketConsumeService,
@@ -47,6 +50,7 @@ public final class ModBootstrap {
             AuthRestrictionBridge authRestrictionBridge
     ) {
         this.properties = properties;
+        this.liveAuthSettings = liveAuthSettings;
         this.stateStore = stateStore;
         this.backendAuthClient = backendAuthClient;
         this.playTicketConsumeService = playTicketConsumeService;
@@ -58,6 +62,7 @@ public final class ModBootstrap {
 
     public static ModBootstrap createDefault() {
         AuthBridgeProperties properties = AuthBridgeProperties.loadDefault();
+        LiveAuthSettings liveAuthSettings = new LiveAuthSettings(properties);
         AuthenticationStateStore stateStore = new AuthenticationStateStore();
         BackendAuthClient backendAuthClient = new BackendAuthClient(properties);
         AuthIntegrationRegistry authIntegrationRegistry = new AuthIntegrationRegistry();
@@ -69,6 +74,7 @@ public final class ModBootstrap {
 
         INSTANCE = new ModBootstrap(
                 properties,
+                liveAuthSettings,
                 stateStore,
                 backendAuthClient,
                 new PlayTicketConsumeService(backendAuthClient, stateStore),
@@ -97,6 +103,9 @@ public final class ModBootstrap {
 
         modBus.register(AuthPayloadRegistrar.class);
 
+        // Start polling admin-editable login timeouts so changes apply without a restart.
+        liveAuthSettings.start();
+
         // VoidRP skin system (26.2 only; no-op on 1.21.1 via the compat adapter).
         ru.voidrp.authbridge.compat.Compat.initSkins(modBus);
 
@@ -121,6 +130,11 @@ public final class ModBootstrap {
 
     public AuthBridgeProperties properties() {
         return properties;
+    }
+
+    /** Admin-editable login timeouts, refreshed from the backend in the background. */
+    public LiveAuthSettings liveAuthSettings() {
+        return liveAuthSettings;
     }
 
     public AuthenticationStateStore stateStore() {

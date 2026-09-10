@@ -11,22 +11,12 @@ import ru.voidrp.authbridge.server.AuthCommandBridge;
 
 public final class ServerAuthHooks {
 
-    // Reconnect-grant lifetime. Default 30 min (was 5). Override with
-    // -Dvoidrp.auth.reconnectGrantMinutes=<n>. Lets players who get disconnected
-    // (e.g. by an HDD save-freeze timeout kick) rejoin without a full launcher re-auth.
-    private static final long RECONNECT_GRANT_SECONDS = resolveGrantSeconds();
-
-    private static long resolveGrantSeconds() {
-        long minutes = 30L;
-        try {
-            String prop = System.getProperty("voidrp.auth.reconnectGrantMinutes");
-            if (prop != null) {
-                minutes = Long.parseLong(prop.trim());
-            }
-        } catch (Throwable ignored) {
-            // keep default
-        }
-        return Math.max(1L, minutes) * 60L;
+    // Reconnect-grant lifetime — how long a disconnected player (e.g. kicked by an
+    // HDD save-freeze timeout) may rejoin without a full launcher re-auth. Now edited
+    // in the admin panel and applied live; the -Dvoidrp.auth.reconnectGrantMinutes JVM
+    // flag only seeds it before the first successful settings poll.
+    private static long reconnectGrantSeconds() {
+        return ModBootstrap.get().liveAuthSettings().reconnectGrantSeconds();
     }
 
     private ServerAuthHooks() {
@@ -51,7 +41,7 @@ public final class ServerAuthHooks {
                     || record.source() == AuthSource.LEGACY_LOGIN
                     || record.source() == AuthSource.RECONNECT_GRANT;
             if (isChainableSource) {
-                Instant expiresAtUtc = Instant.now().plusSeconds(RECONNECT_GRANT_SECONDS);
+                Instant expiresAtUtc = Instant.now().plusSeconds(reconnectGrantSeconds());
                 String ip = player instanceof ServerPlayer sp ? Compat.remoteIp(sp) : null;
                 stateStore.rememberReconnectGrant(record, expiresAtUtc, ip);
 

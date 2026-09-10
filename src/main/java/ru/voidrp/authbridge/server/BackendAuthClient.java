@@ -28,6 +28,21 @@ public final class BackendAuthClient {
     private final Gson gson;
     private final HttpClient httpClient;
 
+    /**
+     * Timeout for a single request, read at build time so an admin change applies to
+     * the very next call. Note the client's TCP {@code connectTimeout} is fixed at
+     * construction — only the per-request timeout is live, which is the one that
+     * matters when the backend is slow rather than unreachable.
+     */
+    private java.time.Duration liveTimeout() {
+        try {
+            return ru.voidrp.authbridge.bootstrap.ModBootstrap.get().liveAuthSettings().requestTimeout();
+        } catch (IllegalStateException notReadyYet) {
+            // Called before bootstrap completed — fall back to the JVM-flag value.
+            return properties.requestTimeout();
+        }
+    }
+
     public BackendAuthClient(AuthBridgeProperties properties) {
         this.properties = properties;
         this.gson = GsonFactory.create();
@@ -45,7 +60,7 @@ public final class BackendAuthClient {
         HttpRequest httpRequest = HttpRequest.newBuilder(uri)
                 .header("Content-Type", "application/json")
                 .header("X-Game-Auth-Secret", properties.gameAuthSecret())
-                .timeout(properties.requestTimeout())
+                .timeout(liveTimeout())
                 .POST(HttpJson.body(gson, new PlayerAccessRequest(playerName)))
                 .build();
 
@@ -71,7 +86,7 @@ public final class BackendAuthClient {
         URI uri = properties.backendBaseUrl().resolve("/api/v1/server/auth/player-skin/" + encoded);
         HttpRequest httpRequest = HttpRequest.newBuilder(uri)
                 .header("X-Game-Auth-Secret", properties.gameAuthSecret())
-                .timeout(properties.requestTimeout())
+                .timeout(liveTimeout())
                 .GET()
                 .build();
 
@@ -93,7 +108,7 @@ public final class BackendAuthClient {
         HttpRequest httpRequest = HttpRequest.newBuilder(uri)
                 .header("Content-Type", "application/json")
                 .header("X-Game-Auth-Secret", properties.gameAuthSecret())
-                .timeout(properties.requestTimeout())
+                .timeout(liveTimeout())
                 .POST(HttpJson.body(gson, request))
                 .build();
 
@@ -115,7 +130,7 @@ public final class BackendAuthClient {
         HttpRequest httpRequest = HttpRequest.newBuilder(uri)
                 .header("Content-Type", "application/json")
                 .header("X-Game-Auth-Secret", properties.gameAuthSecret())
-                .timeout(properties.requestTimeout())
+                .timeout(liveTimeout())
                 .POST(HttpJson.body(gson, request))
                 .build();
 
@@ -137,14 +152,14 @@ public final class BackendAuthClient {
         HttpRequest httpRequest = HttpRequest.newBuilder(uri)
                 .header("Content-Type", "application/json")
                 .header("X-Game-Auth-Secret", properties.gameAuthSecret())
-                .timeout(properties.requestTimeout())
+                .timeout(liveTimeout())
                 .POST(HttpJson.body(gson, new PlayerAccessRequest(playerName)))
                 .build();
 
         try {
             HttpResponse<String> response = httpClient
                     .sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
-                    .get(properties.requestTimeout().toMillis(), TimeUnit.MILLISECONDS);
+                    .get(liveTimeout().toMillis(), TimeUnit.MILLISECONDS);
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 return gson.fromJson(response.body(), PlayerAccessResponse.class);
             }

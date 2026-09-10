@@ -140,7 +140,7 @@ public final class ServerJoinGateHooks {
 
         // Process completed async access checks
         if (!pendingAccessChecks.isEmpty()) {
-            long timeoutMs = ModBootstrap.get().properties().requestTimeout().toMillis();
+            long timeoutMs = ModBootstrap.get().liveAuthSettings().requestTimeout().toMillis();
             Iterator<Map.Entry<UUID, CompletableFuture<PlayerAccessResponse>>> it =
                     pendingAccessChecks.entrySet().iterator();
 
@@ -223,12 +223,12 @@ public final class ServerJoinGateHooks {
                     continue;
                 }
 
-                Instant deadline = Instant.now().plusSeconds(ModBootstrap.get().properties().authGraceSeconds());
+                Instant enteredAt = Instant.now();
 
                 stateStore.markPending(
                         playerUuid,
                         new AuthenticationStateStore.PendingPlayerRecord(
-                                deadline,
+                                enteredAt,
                                 access.legacyAuthEnabled(),
                                 access.mustUseLauncher(),
                                 player.getX(),
@@ -238,14 +238,15 @@ public final class ServerJoinGateHooks {
                 );
 
                 VoidRpAuthBridge.LOGGER.info(
-                        "Player entered auth gate: player={} uuid={} playerExists={} userActive={} legacyEnabled={} mustUseLauncher={} deadlineUtc={} backendError={}",
+                        "Player entered auth gate: player={} uuid={} playerExists={} userActive={} legacyEnabled={} mustUseLauncher={} enteredAtUtc={} graceSeconds={} backendError={}",
                         playerName,
                         playerUuid,
                         access.playerExists(),
                         access.userActive(),
                         access.legacyAuthEnabled(),
                         access.mustUseLauncher(),
-                        deadline,
+                        enteredAt,
+                        ModBootstrap.get().liveAuthSettings().authGraceSeconds(),
                         access.error()
                 );
 
@@ -263,14 +264,22 @@ public final class ServerJoinGateHooks {
             }
         }
 
-        // Process auth grace period timeouts
+        // Process auth grace period timeouts.
+        // The grace period is admin-editable and applied live, so it is re-read here
+        // rather than baked into each pending record: setting it to 0 in the admin
+        // panel must immediately stop kicking players who are already waiting.
+        long graceSeconds = ModBootstrap.get().liveAuthSettings().authGraceSeconds();
+        if (graceSeconds <= 0L) {
+            return;
+        }
+
         var pending = stateStore.snapshotPending();
 
         for (var pendingEntry : pending.entrySet()) {
             UUID playerUuid = pendingEntry.getKey();
             AuthenticationStateStore.PendingPlayerRecord record = pendingEntry.getValue();
 
-            if (Instant.now().isBefore(record.deadlineUtc())) {
+            if (Instant.now().isBefore(record.enteredAtUtc().plusSeconds(graceSeconds))) {
                 continue;
             }
 
@@ -327,7 +336,7 @@ public final class ServerJoinGateHooks {
         if (pendingGrantRevalidation.isEmpty()) {
             return;
         }
-        long timeoutMs = ModBootstrap.get().properties().requestTimeout().toMillis();
+        long timeoutMs = ModBootstrap.get().liveAuthSettings().requestTimeout().toMillis();
         Iterator<Map.Entry<UUID, CompletableFuture<PlayerAccessResponse>>> it =
                 pendingGrantRevalidation.entrySet().iterator();
 
