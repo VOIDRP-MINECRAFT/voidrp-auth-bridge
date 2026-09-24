@@ -1,9 +1,10 @@
 # TODO
 
-- [ ] Replace placeholder network hooks with real NeoForge payload registration.
-- [ ] Add disconnect cleanup.
-- [ ] Add command registration for `/login`.
-- [ ] Add localized feedback messages to player chat/actionbar.
-- [ ] Add config file support instead of only JVM system properties.
-- [ ] Decide final packet shape for launcher ticket payload.
-- [ ] Add tests around JSON parsing and backend error handling.
+- [x] Регистрация NeoForge-пакетов (`AuthPayloadRegistrar`, `ConsumePlayTicketPayload`, `AuthStatusPayload`).
+- [x] Очистка состояния при выходе игрока (`PlayerLoggedOutEvent`).
+- [x] Команда `/login` (запасной вход паролем).
+- [x] Локализованные сообщения игроку (`lang/ru_ru.json`, `lang/en_us.json`).
+- [x] Финальный формат билета лаунчера (`play-ticket.json` → `ConsumePlayTicketPayload`).
+- [x] Настройки входа без рестарта (опрос `/api/v1/server/auth/settings`).
+- [ ] Конфиг-файл вместо одних JVM-флагов.
+- [ ] Тесты на разбор JSON и обработку ошибок бэкенда.
