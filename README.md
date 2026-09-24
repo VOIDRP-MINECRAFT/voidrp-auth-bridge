@@ -1,13 +1,17 @@
-# 🔑 VoidRP Auth Bridge
+<p align="center"><img src=".github/assets/banner.jpg" alt="VoidRP Auth Bridge" width="100%"></p>
 
-> NeoForge-мод (клиент + сервер): вход на модовый сервер VoidRP по одноразовому play-ticket из лаунчера,
-> запасной вход паролем, защищённые переподключения и собственная система скинов.
+<div align="center">
 
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.21.1%20%7C%2026.2-brightgreen?logo=minecraft)
 ![NeoForge](https://img.shields.io/badge/NeoForge-21.1.218%20%7C%2026.2-orange)
 ![Java](https://img.shields.io/badge/Java-21%20%7C%2025-ED8B00?logo=openjdk&logoColor=white)
 [![Build](https://github.com/VOIDRP-MINECRAFT/voidrp-auth-bridge/actions/workflows/build.yml/badge.svg)](https://github.com/VOIDRP-MINECRAFT/voidrp-auth-bridge/actions/workflows/build.yml)
 ![License](https://img.shields.io/badge/license-proprietary-red)
+
+</div>
+
+> NeoForge-мод (клиент + сервер): вход на модовый сервер VoidRP по одноразовому play-ticket из лаунчера,
+> запасной вход паролем, защищённые переподключения и собственная система скинов.
 
 ---
 
