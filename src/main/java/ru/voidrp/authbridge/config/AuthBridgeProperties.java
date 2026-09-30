@@ -14,12 +14,27 @@ public record AuthBridgeProperties(
         String gameAuthSecret
         ) {
 
+    /**
+     * Where a server keeps its settings without JVM flags — the way a partner's server is set
+     * up (the integration page hands this file out filled in). Relative to the server folder.
+     */
+    public static final Path CONFIG_FILE = Path.of("config", "voidrp-auth-bridge.properties");
+
     public static AuthBridgeProperties loadDefault() {
-        String baseUrl = System.getProperty("voidrp.auth.backend", "https://api.void-rp.ru");
-        String timeoutMs = System.getProperty("voidrp.auth.timeoutMs", "60000");
-        String graceSecs = System.getProperty("voidrp.auth.graceSecs", "120");
-        String ticketPath = System.getProperty("voidrp.auth.ticketPath", defaultTicketPath().toString());
-        String gameSecret = System.getProperty("voidrp.auth.gameSecret", "");
+        // JVM flags win over the file, so the main server (configured by flags) is unaffected.
+        java.util.Properties file = new java.util.Properties();
+        if (java.nio.file.Files.isRegularFile(CONFIG_FILE)) {
+            try (var reader = java.nio.file.Files.newBufferedReader(CONFIG_FILE, java.nio.charset.StandardCharsets.UTF_8)) {
+                file.load(reader);
+            } catch (java.io.IOException ignored) {
+                // unreadable file: flags and defaults still apply
+            }
+        }
+        String baseUrl = setting(file, "backend", "https://api.void-rp.ru");
+        String timeoutMs = setting(file, "timeoutMs", "60000");
+        String graceSecs = setting(file, "graceSecs", "120");
+        String ticketPath = setting(file, "ticketPath", defaultTicketPath().toString());
+        String gameSecret = setting(file, "gameSecret", "");
 
         return new AuthBridgeProperties(
                 URI.create(baseUrl),
@@ -30,6 +45,15 @@ public record AuthBridgeProperties(
                 "/api/v1/server/auth/legacy-login",
                 gameSecret
         );
+    }
+
+    private static String setting(java.util.Properties file, String key, String fallback) {
+        String flag = System.getProperty("voidrp.auth." + key);
+        if (flag != null && !flag.isBlank()) {
+            return flag.trim();
+        }
+        String value = file.getProperty(key);
+        return value != null && !value.isBlank() ? value.trim() : fallback;
     }
 
     private static Path defaultTicketPath() {

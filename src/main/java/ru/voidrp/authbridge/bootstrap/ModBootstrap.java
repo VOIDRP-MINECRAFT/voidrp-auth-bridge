@@ -117,6 +117,11 @@ public final class ModBootstrap {
         NeoForge.EVENT_BUS.register(ClientChatFilter.class);
 
         VoidRpAuthBridge.LOGGER.info(
+                "Auth bridge settings: backend={} secret={} (config/voidrp-auth-bridge.properties or -Dvoidrp.auth.*)",
+                properties.backendBaseUrl(),
+                properties.gameAuthSecret() == null || properties.gameAuthSecret().isBlank() ? "NOT SET" : "set"
+        );
+        VoidRpAuthBridge.LOGGER.info(
                 "Auth bridge registered: stateStore={}, backendClient={}, playTicketService={}, legacyService={}, preAuthRestrictionService={}, authIntegrationRegistry={}, authRestrictionBridge={}",
                 stateStore.getClass().getSimpleName(),
                 backendAuthClient.getClass().getSimpleName(),
