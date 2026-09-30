@@ -66,7 +66,7 @@ public final class ServerPayloadHandler {
         }));
     }
 
-    private static void applyAuthResult(ServerPlayer player, ConsumePlayTicketResponse response, String verifiedPlayerName) {
+    public static void applyAuthResult(ServerPlayer player, ConsumePlayTicketResponse response, String verifiedPlayerName) {
         if (response != null && response.accepted()) {
             ModBootstrap.get().authRestrictionBridge().onPlayerAuthenticated(player.getUUID());
             player.sendSystemMessage(Component.literal("Авторизация через лаунчер подтверждена."));

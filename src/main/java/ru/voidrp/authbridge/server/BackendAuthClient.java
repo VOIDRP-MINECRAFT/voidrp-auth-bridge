@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import ru.voidrp.authbridge.common.dto.ConsumeByIpRequest;
 import ru.voidrp.authbridge.common.dto.ConsumePlayTicketRequest;
 import ru.voidrp.authbridge.common.dto.ConsumePlayTicketResponse;
 import ru.voidrp.authbridge.common.dto.LegacyLoginRequest;
@@ -105,6 +106,33 @@ public final class BackendAuthClient {
 
     public CompletableFuture<ConsumePlayTicketResponse> consumePlayTicketAsync(ConsumePlayTicketRequest request) {
         URI uri = properties.backendBaseUrl().resolve(properties.consumeTicketPath());
+        HttpRequest httpRequest = HttpRequest.newBuilder(uri)
+                .header("Content-Type", "application/json")
+                .header("X-Game-Auth-Secret", properties.gameAuthSecret())
+                .timeout(liveTimeout())
+                .POST(HttpJson.body(gson, request))
+                .build();
+
+        return httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
+                .thenApply(response -> {
+                    if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                        return gson.fromJson(response.body(), ConsumePlayTicketResponse.class);
+                    }
+                    return ConsumePlayTicketResponse.failed("http_" + response.statusCode() + ": " + response.body());
+                })
+                .exceptionally(ex -> {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    return ConsumePlayTicketResponse.failed("io_error: " + cause.getMessage());
+                });
+    }
+
+    /**
+     * Claims the player's fresh launcher ticket by nickname and connection IP, so the
+     * server does not depend on the client sending it (a heavy pack keeps the client
+     * busy for minutes). Not accepted = no matching ticket; the client's one still works.
+     */
+    public CompletableFuture<ConsumePlayTicketResponse> consumeByIpAsync(ConsumeByIpRequest request) {
+        URI uri = properties.backendBaseUrl().resolve("/api/v1/server/auth/consume-by-ip");
         HttpRequest httpRequest = HttpRequest.newBuilder(uri)
                 .header("Content-Type", "application/json")
                 .header("X-Game-Auth-Secret", properties.gameAuthSecret())

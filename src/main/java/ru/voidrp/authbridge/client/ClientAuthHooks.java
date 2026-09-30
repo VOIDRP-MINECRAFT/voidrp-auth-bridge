@@ -15,7 +15,10 @@ import ru.voidrp.authbridge.network.ConsumePlayTicketPayload;
 
 public final class ClientAuthHooks {
 
-    private static final long DISPATCH_WINDOW_MS = 120_000L;
+    // How long the client keeps trying to send its ticket after login. A heavy pack keeps
+    // the client thread busy for minutes on a slow PC; the old 120 s window expired first
+    // and the ticket was never sent, leaving the player at "checking authorization".
+    private static final long DISPATCH_WINDOW_MS = 30 * 60_000L;
 
     private static boolean sentThisSession = false;
     private static boolean awaitingDispatch = false;
@@ -32,8 +35,16 @@ public final class ClientAuthHooks {
         ClientChatFilter.startFiltering();
 
         VoidRpAuthBridge.LOGGER.info(
-                "Client login detected, waiting for player instance before sending launcher ticket."
+                "Client login detected, sending launcher ticket as soon as the player instance exists."
         );
+        // The player usually exists already here: send now instead of on the first client
+        // tick, which a heavy pack delays by minutes while it loads recipes and tags.
+        // Only when everything is in place: otherwise tryDispatch would reset the state and
+        // the tick fallback would never run.
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player != null && minecraft.getConnection() != null) {
+            tryDispatch(minecraft);
+        }
     }
 
     @SubscribeEvent
@@ -41,8 +52,13 @@ public final class ClientAuthHooks {
         if (!awaitingDispatch || sentThisSession) {
             return;
         }
+        tryDispatch(Minecraft.getInstance());
+    }
 
-        Minecraft minecraft = Minecraft.getInstance();
+    private static void tryDispatch(Minecraft minecraft) {
+        if (!awaitingDispatch || sentThisSession) {
+            return;
+        }
 
         if (minecraft.getConnection() == null) {
             resetState();

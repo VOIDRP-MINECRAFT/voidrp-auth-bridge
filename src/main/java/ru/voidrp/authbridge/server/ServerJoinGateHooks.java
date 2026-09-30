@@ -9,6 +9,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -18,6 +19,7 @@ import ru.voidrp.authbridge.VoidRpAuthBridge;
 import ru.voidrp.authbridge.bootstrap.ModBootstrap;
 import ru.voidrp.authbridge.common.dto.PlayerAccessResponse;
 import ru.voidrp.authbridge.network.AuthStatusPayload;
+import ru.voidrp.authbridge.network.ServerPayloadHandler;
 
 public final class ServerJoinGateHooks {
 
@@ -261,6 +263,8 @@ public final class ServerJoinGateHooks {
                             "Ожидаем тикет лаунчера VoidRP"
                     ));
                 }
+
+                claimTicketByIp(event.getServer(), player, playerUuid, playerName);
             }
         }
 
@@ -323,6 +327,39 @@ public final class ServerJoinGateHooks {
 
             stateStore.clear(playerUuid);
         }
+    }
+
+    /**
+     * Lets the player in by the ticket their launcher took, without waiting for the client.
+     *
+     * <p>The client sends its ticket from a client tick once the player exists, but a heavy
+     * pack keeps the client thread busy (recipes, tags, JEI) for one to several minutes, and
+     * past its dispatch window it never sends it at all — the player then sits at "checking
+     * authorization" for good. So the server asks the backend itself for a fresh unused
+     * ticket issued for this nickname from this connection's IP. No match (a VPN on the
+     * launcher, a different network) changes nothing: the client's ticket still works.
+     */
+    private static void claimTicketByIp(MinecraftServer server, ServerPlayer player, UUID playerUuid, String playerName) {
+        String ip = Compat.remoteIp(player);
+        if (ip == null || ip.isBlank()) {
+            return;
+        }
+        ModBootstrap.get().playTicketConsumeService()
+                .authenticateByIpAsync(playerUuid, playerName, ip)
+                .thenAccept(response -> server.execute(() -> {
+                    ServerPlayer online = server.getPlayerList().getPlayer(playerUuid);
+                    if (online == null) {
+                        return;
+                    }
+                    if (response == null || !response.accepted()) {
+                        VoidRpAuthBridge.LOGGER.info(
+                                "No launcher ticket matched by IP, waiting for the client's: player={} ip={} reason={}",
+                                playerName, ip, response != null ? response.error() : "null");
+                        return;
+                    }
+                    VoidRpAuthBridge.LOGGER.info("Launcher ticket claimed by IP: player={} ip={}", playerName, ip);
+                    ServerPayloadHandler.applyAuthResult(online, response, playerName);
+                }));
     }
 
     /**
