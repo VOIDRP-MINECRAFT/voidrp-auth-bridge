@@ -41,9 +41,8 @@ public final class ClientAuthHooks {
         // tick, which a heavy pack delays by minutes while it loads recipes and tags.
         // Only when everything is in place: otherwise tryDispatch would reset the state and
         // the tick fallback would never run.
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player != null && minecraft.getConnection() != null) {
-            tryDispatch(minecraft);
+        if (Minecraft.getInstance().player != null && Minecraft.getInstance().getConnection() != null) {
+            tryDispatch();
         }
     }
 
@@ -52,13 +51,18 @@ public final class ClientAuthHooks {
         if (!awaitingDispatch || sentThisSession) {
             return;
         }
-        tryDispatch(Minecraft.getInstance());
+        tryDispatch();
     }
 
-    private static void tryDispatch(Minecraft minecraft) {
+    // No client class in any method signature here: the event bus reads every declared
+    // method's signature when it registers this class, also on the dedicated server, where
+    // a Minecraft parameter fails the whole mod with NoClassDefFoundError.
+    private static void tryDispatch() {
         if (!awaitingDispatch || sentThisSession) {
             return;
         }
+
+        Minecraft minecraft = Minecraft.getInstance();
 
         if (minecraft.getConnection() == null) {
             resetState();
