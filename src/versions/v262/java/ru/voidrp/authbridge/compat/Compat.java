@@ -45,6 +45,11 @@ public final class Compat {
      * серверные хуки всегда; клиентский обработчик — только на физическом клиенте,
      * чтобы client-only классы не грузились на dedicated-сервере.
      */
+    /** Физический клиент (игра игрока), а не dedicated-сервер. */
+    public static boolean isPhysicalClient() {
+        return net.neoforged.fml.loading.FMLEnvironment.getDist() == net.neoforged.api.distmarker.Dist.CLIENT;
+    }
+
     public static void initSkins(net.neoforged.bus.api.IEventBus modBus) {
         modBus.register(ru.voidrp.authbridge.skin.SkinPayloadRegistrar.class);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.register(ru.voidrp.authbridge.skin.ServerSkinHooks.class);

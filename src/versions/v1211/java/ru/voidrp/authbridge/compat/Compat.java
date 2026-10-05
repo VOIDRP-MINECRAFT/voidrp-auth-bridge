@@ -47,6 +47,11 @@ public final class Compat {
      * gamesync→SkinsRestorer (тот дёргал player-list refresh и ронял игроков
      * из таб-листа на гибриде Mohist/Youer).
      */
+    /** Физический клиент (игра игрока), а не dedicated-сервер. */
+    public static boolean isPhysicalClient() {
+        return net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT;
+    }
+
     public static void initSkins(net.neoforged.bus.api.IEventBus modBus) {
         modBus.register(ru.voidrp.authbridge.skin.SkinPayloadRegistrar.class);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.register(ru.voidrp.authbridge.skin.ServerSkinHooks.class);

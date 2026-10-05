@@ -104,7 +104,15 @@ public final class ModBootstrap {
         modBus.register(AuthPayloadRegistrar.class);
 
         // Start polling admin-editable login timeouts so changes apply without a restart.
-        liveAuthSettings.start();
+        // Server-side only: the same jar ships in the client pack, where there is no secret
+        // and every player's game would hit the backend with a 401 every 10 seconds.
+        if (ru.voidrp.authbridge.compat.Compat.isPhysicalClient()) {
+            VoidRpAuthBridge.LOGGER.info("Physical client: live auth settings poller not started");
+        } else if (properties.gameAuthSecret() == null || properties.gameAuthSecret().isBlank()) {
+            VoidRpAuthBridge.LOGGER.warn("Game auth secret not set: live auth settings poller not started");
+        } else {
+            liveAuthSettings.start();
+        }
 
         // VoidRP skin system (26.2 only; no-op on 1.21.1 via the compat adapter).
         ru.voidrp.authbridge.compat.Compat.initSkins(modBus);
